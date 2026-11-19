@@ -39,6 +39,25 @@ from app.tasks import (
     TaskResponse,
     TaskStateResponse,
 )
+from app import workflows
+from app.workflows import (
+    create_workflow,
+    get_workflow,
+    update_workflow,
+    publish_workflow_version,
+    rollback_workflow,
+    execute_workflow_run,
+    stream_workflow_run_events,
+    get_workflow_run_status,
+    CreateWorkflowRequest,
+    UpdateWorkflowRequest,
+    WorkflowResponse,
+    PublishWorkflowResponse,
+    RollbackWorkflowRequest,
+    StartWorkflowRunRequest,
+    StartWorkflowRunResponse,
+    WorkflowRunResponse,
+)
 
 settings = get_settings()
 logging.basicConfig(
@@ -243,6 +262,125 @@ def create_app() -> FastAPI:
         claims=Depends(get_current_user),
     ) -> TaskStateResponse:
         return await execute_task(organization_id, task_id, UUID(claims["sub"]), access_token)
+
+    @application.post(
+        "/api/v1/organizations/{organization_id}/workflows",
+        tags=["workflows"],
+        response_model=WorkflowResponse,
+        status_code=201,
+    )
+    async def post_workflow(
+        organization_id: UUID,
+        request: CreateWorkflowRequest,
+        access_token: str = Depends(get_access_token),
+        _claims=Depends(get_current_user),
+    ) -> WorkflowResponse:
+        return await create_workflow(organization_id, request, access_token)
+
+    @application.get(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}",
+        tags=["workflows"],
+        response_model=WorkflowResponse,
+    )
+    async def get_workflow_endpoint(
+        organization_id: UUID,
+        workflow_id: UUID,
+        access_token: str = Depends(get_access_token),
+        _claims=Depends(get_current_user),
+    ) -> WorkflowResponse:
+        return await get_workflow(organization_id, workflow_id, access_token)
+
+    @application.patch(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}",
+        tags=["workflows"],
+        response_model=WorkflowResponse,
+    )
+    async def patch_workflow(
+        organization_id: UUID,
+        workflow_id: UUID,
+        request: UpdateWorkflowRequest,
+        access_token: str = Depends(get_access_token),
+        _claims=Depends(get_current_user),
+    ) -> WorkflowResponse:
+        return await update_workflow(organization_id, workflow_id, request, access_token)
+
+    @application.post(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}/publish",
+        tags=["workflows"],
+        response_model=PublishWorkflowResponse,
+        status_code=201,
+    )
+    async def publish_workflow(
+        organization_id: UUID,
+        workflow_id: UUID,
+        access_token: str = Depends(get_access_token),
+        claims=Depends(get_current_user),
+    ) -> PublishWorkflowResponse:
+        return await publish_workflow_version(organization_id, workflow_id, UUID(claims["sub"]), access_token)
+
+    @application.post(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}/rollback",
+        tags=["workflows"],
+        response_model=WorkflowResponse,
+    )
+    async def rollback_workflow_endpoint(
+        organization_id: UUID,
+        workflow_id: UUID,
+        request: RollbackWorkflowRequest,
+        access_token: str = Depends(get_access_token),
+        claims=Depends(get_current_user),
+    ) -> WorkflowResponse:
+        return await rollback_workflow(organization_id, workflow_id, request, UUID(claims["sub"]), access_token)
+
+    @application.post(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}/runs",
+        tags=["workflows"],
+        response_model=StartWorkflowRunResponse,
+        status_code=202,
+    )
+    async def post_workflow_run(
+        organization_id: UUID,
+        workflow_id: UUID,
+        request: StartWorkflowRunRequest,
+        access_token: str = Depends(get_access_token),
+        claims=Depends(get_current_user),
+    ) -> StartWorkflowRunResponse:
+        return await execute_workflow_run(organization_id, workflow_id, request, UUID(claims["sub"]), access_token)
+
+    @application.get(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}/runs/{run_id}/events",
+        tags=["workflows"],
+    )
+    async def get_workflow_run_events(
+        organization_id: UUID,
+        workflow_id: UUID,
+        run_id: UUID,
+        access_token: str = Depends(get_access_token),
+        _claims=Depends(get_current_user),
+        last_event_id: Optional[int] = None,
+    ):
+        from fastapi.responses import StreamingResponse
+        state = workflows._workflow_runs.get(run_id)
+        if not state or state.org_id != organization_id or state.workflow_id != workflow_id:
+            raise HTTPException(status_code=404, detail="Workflow run not found")
+        return StreamingResponse(
+            stream_workflow_run_events(organization_id, workflow_id, run_id, access_token, last_event_id),
+            media_type="text/event-stream",
+        )
+
+    @application.get(
+        "/api/v1/organizations/{organization_id}/workflows/{workflow_id}/runs/{run_id}",
+        tags=["workflows"],
+        response_model=WorkflowRunResponse,
+    )
+    async def get_workflow_run(
+        organization_id: UUID,
+        workflow_id: UUID,
+        run_id: UUID,
+        access_token: str = Depends(get_access_token),
+        _claims=Depends(get_current_user),
+    ) -> WorkflowRunResponse:
+        return await get_workflow_run_status(organization_id, workflow_id, run_id, access_token)
 
     return application
 

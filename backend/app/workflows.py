@@ -501,10 +501,13 @@ async def create_workflow(
         nodes = request.graph.get("nodes", [])
         edges = request.graph.get("edges", [])
         if nodes or edges:
-            validate_dag(
-                [{"id": n["id"]} for n in nodes],
-                [{"source": e["source"], "target": e["target"]} for e in edges],
-            )
+            try:
+                validate_dag(
+                    [{"id": n["id"]} for n in nodes],
+                    [{"source": e["source"], "target": e["target"]} for e in edges],
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e))
 
     url = f"{settings.supabase_url.rstrip('/')}/rest/v1/workflows"
     headers = {
