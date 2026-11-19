@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { z } from "zod";
 
 import DashboardPlaceholder from "@/components/dashboard-placeholder";
@@ -252,7 +253,19 @@ function OrganizationList() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <nav aria-label="Navigasi Platform" className="mt-6 flex items-center gap-2 border-b border-slate-200 pb-2">
+        <span className="flex min-h-11 items-center gap-1.5 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white">
+          Agents
+        </span>
+        <Link
+          href="/workflows"
+          className="flex min-h-11 items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200/60 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+        >
+          Workflows (Builder) →
+        </Link>
+      </nav>
+
+      <div className="mt-6">
         {selectedOrganization ? (
           <AgentDashboard organization={selectedOrganization} />
         ) : organizations.length === 0 ? (
