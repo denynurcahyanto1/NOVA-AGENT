@@ -58,27 +58,17 @@ async def create_organization(request: CreateOrganizationRequest, user_id: UUID,
     if not settings.supabase_url or not settings.supabase_publishable_key:
         raise HTTPException(status_code=503, detail="Organization access is not configured")
 
-    url = f"{settings.supabase_url.rstrip('/')}/rest/v1/organizations"
-    headers = {
-        "apikey": settings.supabase_publishable_key,
-        "Authorization": f"Bearer {access_token}",
-        "Prefer": "return=representation",
-    }
-    data = {
-        "name": request.name,
-        "slug": request.slug,
-        "created_by": str(user_id),
-    }
+    # The database derives the owner from auth.uid() and inserts the organization\n    # plus its initial membership in one transaction. Never trust a client user_id.\n    url = f"{settings.supabase_url.rstrip('/')}/rest/v1/rpc/create_organization_with_owner"\n    headers = {\n        "apikey": settings.supabase_publishable_key,\n        "Authorization": f"Bearer {access_token}",\n        "Prefer": "return=representation",\n    }\n    data = {\n        "p_name": request.name,\n        "p_slug": request.slug,\n    }
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
             response = await client.post(url, headers=headers, json=data)
     except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPError):
         raise HTTPException(status_code=503, detail="Organization service unavailable") from None
 
-    if response.status_code == 201:
+    if response.status_code in (200, 201):
         try:
             rows = response.json()
-            return OrganizationResponse.model_validate(rows[0])
+            row = rows[0] if isinstance(rows, list) and rows else rows\n            return OrganizationResponse.model_validate(row)
         except (ValueError, TypeError):
             raise HTTPException(status_code=503, detail="Organization service unavailable") from None
     if response.status_code == 409:
