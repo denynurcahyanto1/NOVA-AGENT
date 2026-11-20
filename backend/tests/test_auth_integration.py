@@ -320,7 +320,7 @@ def test_unsupported_algorithm_rejected(monkeypatch):
     # Try HS256 token
     hs_token = jwt.encode(
         {"sub": "user-123", "exp": int(time.time()) + 3600},
-        "secret",
+        "test-only-hmac-secret-key-at-least-32-bytes",
         algorithm="HS256"
     )
 

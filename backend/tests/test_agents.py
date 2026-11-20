@@ -47,6 +47,7 @@ def test_create_agent_draft_success(monkeypatch):
                         "id": str(AGENT_ID),
                         "organization_id": str(ORG_A),
                         "name": json["name"],
+                        "description": json.get("description"),
                         "draft_config": json["draft_config"],
                         "draft_revision": 0,
                         "created_at": "2026-11-19T00:00:00Z",

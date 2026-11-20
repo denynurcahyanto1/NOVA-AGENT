@@ -663,7 +663,9 @@ async def publish_workflow_version(
         "Authorization": f"Bearer {access_token}",
     }
 
-    # Get current draft directly; _get_workflow_version expects a version UUID,\n    # not a synthetic workflow:<uuid> identifier.\n    workflow_url = f"{base_url}/rest/v1/workflows"
+    # Get current draft directly; _get_workflow_version expects a version UUID,
+    # not a synthetic workflow:<uuid> identifier.
+    workflow_url = f"{base_url}/rest/v1/workflows"
     workflow_resp = await httpx.AsyncClient(timeout=httpx.Timeout(5.0)).get(
         workflow_url, headers=headers,
         params={"id": f"eq.{workflow_id}", "organization_id": f"eq.{org_id}", "select": "graph,draft_revision", "limit": "1"}
