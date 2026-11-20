@@ -19,6 +19,7 @@ class AgentResponse(CamelModel):
     id: UUID
     organization_id: UUID = Field(alias="organizationId")
     name: str
+    description: Optional[str] = None
     draft_config: Dict[str, Any] = Field(default_factory=dict, alias="draftConfig")
     draft_revision: int = Field(default=0, alias="draftRevision")
     created_at: str = Field(alias="createdAt")
@@ -54,6 +55,7 @@ async def create_agent(
     payload = {
         "organization_id": str(org_id),
         "name": request.name,
+        "description": request.description,
         "draft_config": request.draft_config,
         "draft_revision": 0,
     }
