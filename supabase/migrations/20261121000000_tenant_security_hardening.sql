@@ -13,7 +13,9 @@ alter table public.agents
   check (description is null or char_length(description) <= 500);
 
 -- 3. Create an organization and its initial owner membership atomically.
--- SECURITY INVOKER is deliberate: the existing RLS policies remain in force.
+-- SECURITY DEFINER is required to avoid the initial-owner RLS bootstrap cycle.
+-- The function derives identity only from auth.uid(), validates input, and is
+-- executable only by authenticated users.
 create or replace function public.create_organization_with_owner(
   p_name text,
   p_slug text
