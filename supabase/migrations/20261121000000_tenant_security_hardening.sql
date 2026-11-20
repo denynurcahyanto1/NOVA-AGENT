@@ -20,7 +20,7 @@ create or replace function public.create_organization_with_owner(
 )
 returns setof public.organizations
 language plpgsql
-security invoker
+security definer
 set search_path = pg_catalog
 as $function$
 declare
@@ -130,6 +130,19 @@ alter table public.workflow_runs
 alter table public.workflow_runs
   add constraint workflow_runs_org_idempotency_key_key
   unique (organization_id, idempotency_key);
+
+-- 6a. Correct the organization read policy: memberships also has an id column,
+-- so the outer organizations primary key must be explicitly qualified.
+drop policy if exists organizations_read_member on public.organizations;
+
+create policy organizations_read_member on public.organizations
+  for select to authenticated
+  using (exists (
+    select 1
+    from public.organization_memberships m
+    where m.organization_id = organizations.id
+      and m.user_id = (select auth.uid())
+  ));
 
 -- 7. Rebuild agent policies with explicitly qualified outer-row references.
 drop policy if exists agents_read on public.agents;
