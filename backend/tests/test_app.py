@@ -145,6 +145,43 @@ def test_supabase_unavailable_returns_generic_503(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_create_organization_uses_atomic_owner_rpc_and_user_jwt(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "public-test-key")
+    get_settings.cache_clear()
+    seen = {}
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, headers, json):
+            seen.update(url=url, headers=headers, json=json)
+            return httpx.Response(200, json=[{
+                "id": str(ORG_ID),
+                "name": "Acme",
+                "slug": "acme",
+                "created_at": "2026-01-01T00:00:00Z",
+            }])
+
+    monkeypatch.setattr(organizations.httpx, "AsyncClient", Client)
+    try:
+        result = await organizations.create_organization(
+            organizations.CreateOrganizationRequest(name="Acme", slug="acme"),
+            UUID("00000000-0000-0000-0000-000000000099"),
+            "user-jwt",
+        )
+        assert result.id == ORG_ID
+        assert seen["url"].endswith("/rest/v1/rpc/create_organization_with_owner")
+        assert seen["json"] == {"p_name": "Acme", "p_slug": "acme"}
+        assert seen["headers"]["Authorization"] == "Bearer user-jwt"
+        assert seen["headers"]["apikey"] == "public-test-key"
+        assert "service_role" not in str(seen["headers"])
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_supabase_request_forwards_user_token_and_not_service_role(monkeypatch):
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "public-test-key")

@@ -102,6 +102,7 @@ class WorkflowRunState:
     workflow_id: UUID
     workflow_version_id: UUID
     input_data: Dict[str, Any]
+    user_id: UUID
     status: str = "queued"
     context: Dict[str, Any] = field(default_factory=dict)
     node_states: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -285,6 +286,7 @@ async def _create_workflow_run(
         workflow_id=workflow_id,
         workflow_version_id=workflow_version_id,
         input_data=input_data,
+        user_id=user_id,
     )
     _workflow_runs[run_id] = state
 
@@ -435,7 +437,7 @@ async def _execute_agent_node(
     )
 
     run_resp = await create_agent_run(
-        state.org_id, UUID(agent_id), run_resp, UUID(state.input_data.get("user_id", "")), access_token
+        state.org_id, UUID(agent_id), run_request, state.user_id, access_token
     )
     # In production, wait for completion and return output
     return {"run_id": str(run_resp.run_id), "status": "started"}
@@ -661,9 +663,8 @@ async def publish_workflow_version(
         "Authorization": f"Bearer {access_token}",
     }
 
-    # Get current draft
-    workflow_resp = await _get_workflow_version(f"workflow:{workflow_id}", access_token, org_id)
-    # Simplified - fetch workflow directly
+    # Get current draft directly; _get_workflow_version expects a version UUID,
+    # not a synthetic workflow:<uuid> identifier.
     workflow_url = f"{base_url}/rest/v1/workflows"
     workflow_resp = await httpx.AsyncClient(timeout=httpx.Timeout(5.0)).get(
         workflow_url, headers=headers,
