@@ -76,6 +76,7 @@ def test_create_agent_draft_success(monkeypatch):
     assert body["id"] == str(AGENT_ID)
     assert body["organizationId"] == str(ORG_A)
     assert body["name"] == "Customer Support Agent"
+    assert body["description"] == "Handles inbound queries"
     assert body["draftConfig"]["model"] == "gpt-4o"
     assert "draftRevision" in body
     assert "createdAt" in body
@@ -86,6 +87,7 @@ def test_create_agent_draft_success(monkeypatch):
     assert captured["headers"]["apikey"] == "public-test-key"
     assert "service_role" not in str(captured["headers"])
     assert captured["json"]["organization_id"] == str(ORG_A)
+    assert captured["json"]["description"] == "Handles inbound queries"
 
 
 def test_create_agent_validation_error(monkeypatch):
@@ -130,6 +132,7 @@ def test_publish_agent_version_success_and_increments(monkeypatch):
                         "id": str(AGENT_ID),
                         "organization_id": str(ORG_A),
                         "name": "Customer Support Agent",
+                        "description": "Handles inbound queries",
                         "draft_config": {"instructions": "v2 prompt", "model": "claude-3-5-sonnet"},
                         "draft_revision": 1,
                     }
